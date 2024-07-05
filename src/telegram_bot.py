@@ -3,7 +3,7 @@ import logging
 import os
 import time
 from datetime import datetime
-from typing import Union
+from typing import Tuple, Union
 
 import requests
 from dotenv import load_dotenv
@@ -40,18 +40,90 @@ def send_telegram_message(text, chat_id, api_key):
         print("Message sent successfully.")
 
 
+def surprise(actual, forecast) -> Tuple[bool, float]:
+    def clean_string_to_float(value):
+        return (
+            value.replace("%", "")
+            .replace("K", "")
+            .replace("M", "")
+            .replace("B", "")
+            .replace("T", "")
+            .replace(" ", "")
+            .replace("+", "")
+            .replace("-", "")
+            .replace(",", "")
+        )
+
+    _surprise = False
+    actual = clean_string_to_float(actual)
+    forecast = clean_string_to_float(forecast)
+    print(f"Actual: {actual}, Forecast: {forecast}")
+    if actual == "" or forecast == "":
+        return _surprise, 0
+    diff = round(float(actual) - float(forecast), 3)
+    _surprise = True if (diff > 0 or diff < 0) else False
+    return _surprise, diff
+
+
+def increase_from_previous(actual, previous) -> Tuple[bool, float]:
+    def clean_string_to_float(value):
+        return (
+            value.replace("%", "")
+            .replace("K", "")
+            .replace("M", "")
+            .replace("B", "")
+            .replace("T", "")
+            .replace(" ", "")
+            .replace("+", "")
+            .replace("-", "")
+            .replace(",", "")
+        )
+
+    _surprise = False
+    actual = clean_string_to_float(actual)
+    previous = clean_string_to_float(previous)
+    print(f"Actual: {actual}, Previous: {previous}")
+    if actual == "" or previous == "":
+        return _surprise, 0
+    diff = round(float(actual) - float(previous), 3)
+    _surprise = True if (diff > 0 or diff < 0) else False
+    return _surprise, diff
+
+
 def build_message(event, importance, timestamp, flag, previous, forecast, actual):
     date_of_event = datetime.now().strftime("%Y-%m-%d") + " " + timestamp
-    return f"""
+    core = f"""
 📅 {event}
 ❗ {importance}
 💱 {flag}
-⌚ {date_of_event}
+⌚ {date_of_event}"""
+    secondary = f"""
 
 ✅ Actual ----> {actual}
 ✅ Forecast ----> {forecast}
 ✅ Previous ----> {previous}
-"""
+    """
+    if not actual and not previous and not forecast:
+        return core
+    else:
+        surprise_, diff = surprise(actual, forecast)
+        surprise_previous, diff_previous = increase_from_previous(actual, previous)
+        logging.info(f"Surprise: {surprise_}, Diff: {diff}")
+        if surprise_ and surprise_previous:
+            return (
+                core
+                + secondary
+                + f"\n🎉 Surprise ----> {diff}"
+                + f"\n🎉 Surprise from previous ----> {diff_previous}"
+            )
+        elif surprise_:
+            return core + secondary + f"\n🎉 Surprise ----> {diff}"
+        elif surprise_previous:
+            return (
+                core + secondary + f"\n🎉 Surprise from previous ----> {diff_previous}"
+            )
+        else:
+            return core + secondary
 
 
 def send_massage(
