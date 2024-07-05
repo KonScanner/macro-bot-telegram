@@ -3,6 +3,8 @@ import time
 
 from src.economic_calendar import EconomicTable
 from src.telegram_bot import compute_massage, send_telegram_message
+from src.store.macro_events import MacroEventsStore
+from src.utils.db import get_session_factory, read_hashes
 
 TIMEOUT_SLEEP = 30
 INITIALIZE_SLEEP = 2
@@ -12,7 +14,9 @@ logging.basicConfig(level=logging.DEBUG)
 
 class Bot(object):
     def __init__(self):
-        self.check_list = set()
+        self.session_factory = get_session_factory()
+        self.session = self.session_factory()
+        self.check_list = read_hashes(self.session)
 
     def compute(
         self,
@@ -38,11 +42,28 @@ class Bot(object):
                     forecast,
                     actual,
                 )
+                hash_massage = "0x" + hash_massage
                 if hash_massage not in self.check_list:
                     if actual_val == "":
                         if actual == "":
                             continue
+                        payload = {
+                            "hash": hash_massage,
+                            "event": event,
+                            "importance": importance,
+                            "timestamp": timestamp,
+                            "flag": flag,
+                            "previous": previous,
+                            "forecast": forecast,
+                            "actual": actual,
+                        }
                         send_telegram_message(text=text)
+                        MacroEventsStore().write_all(
+                            self.session,
+                            json_data_list=[payload],
+                            merge=True,
+                            commit=True,
+                        )
                         time.sleep(INITIALIZE_SLEEP)
                 self.check_list.add(hash_massage)
             else:
@@ -50,7 +71,6 @@ class Bot(object):
 
     def core(self, e: EconomicTable, **kwargs):
         while True:
-            e.refresh()
             try:
                 self.compute(e, **kwargs)
             except Exception:
@@ -62,11 +82,11 @@ class Bot(object):
                 f"{time.ctime()} - Sleeping for {GENERAL_SLEEP} seconds, Checklist length: {len(self.check_list)}"
             )
             time.sleep(GENERAL_SLEEP)
+            e.refresh()
 
 
 if __name__ == "__main__":
     url = "https://www.investing.com/economic-calendar/"
     e = EconomicTable()
-    time.sleep(GENERAL_SLEEP)
     b = Bot()
     b.core(e, flags=["USD", "EUR", "GBP"], actual_val="")

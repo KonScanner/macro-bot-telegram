@@ -1,0 +1,19 @@
+version: '3.8'
+services:
+  db:
+    container_name: macro-bot-db
+    image: postgres:latest
+    restart: always
+    environment:
+      - POSTGRES_USER=jerome
+      - POSTGRES_PASSWORD=jpgotyourback
+    ports:
+      - '4242:5432'
+    volumes: 
+      - db:/var/lib/postgresql/data
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+volumes:
+  db:
+    driver: local

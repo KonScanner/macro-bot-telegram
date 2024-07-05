@@ -6,3 +6,7 @@ requests==2.32.3
 urllib3==2.2.2
 ruff==0.5.0
 python-dotenv==1.0.1
+greenlet==3.0.3
+sqlalchemy==2.0.30
+typing-extensions==4.12.2
+psycopg2-binary==2.9.9
