@@ -46,31 +46,32 @@ def send_telegram_message(text):
         print("Message sent successfully.")
 
 
-def surprise(actual, forecast) -> Tuple[bool, float]:
+def compare_values(
+    value1: str, value2: str
+) -> Tuple[bool, float]:
+    """
+    Compare two values and return a tuple indicating if they are different and the difference between them.
+
+    Parameters:
+        value1 (str): The first value to compare.
+        value2 (str): The second value to compare.
+
+    Returns:
+        Tuple[bool, float]: A tuple containing a boolean indicating if the values are different and the difference between them as a float.
+    """
     def clean_string_to_float(value: str) -> str:
         return re.sub(r"[^\d.]+", "", value)
 
     is_surprise = False
-    actual = clean_string_to_float(actual)
-    forecast = clean_string_to_float(forecast)
-    if actual == "" or forecast == "":
+    value1 = clean_string_to_float(value1)
+    value2 = clean_string_to_float(value2)
+
+    if value1 == "" or value2 == "":
         return is_surprise, 0
-    diff = round(float(actual) - float(forecast), 3)
+
+    diff = round(float(value1) - float(value2), 3)
     is_surprise = True if diff != 0 else False
-    return is_surprise, diff
 
-
-def increase_from_previous(actual, previous) -> Tuple[bool, float]:
-    def clean_string_to_float(value: str) -> str:
-        return re.sub(r"[^\d.]+", "", value)
-
-    is_surprise = False
-    actual = clean_string_to_float(actual)
-    previous = clean_string_to_float(previous)
-    if actual == "" or previous == "":
-        return is_surprise, 0
-    diff = round(float(actual) - float(previous), 3)
-    is_surprise = True if diff != 0 else False
     return is_surprise, diff
 
 
@@ -90,8 +91,8 @@ def build_message(event, importance, timestamp, flag, previous, forecast, actual
     if not actual and not previous and not forecast:
         return core
     else:
-        surprise_, diff = surprise(actual, forecast)
-        surprise_previous, diff_previous = increase_from_previous(actual, previous)
+        surprise_, diff = compare_values(actual, forecast)
+        surprise_previous, diff_previous = compare_values(actual, previous)
         if surprise_ and surprise_previous:
             return (
                 core

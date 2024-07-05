@@ -53,12 +53,18 @@ def get_session_factory(
     logging.debug("Session factory created with URI: %s", db_uri)
     return sessionmaker(bind=engine, autoflush=autoflush)
 
-def read_hashes(session) -> set:
+def get_unique_hashes(session) -> set:
     """
-    Read all the hashes from the database.
+    Get all unique hashes from the database.
 
     :param session: The database session.
 
-    :return A set of all the hashes.
+    :return A set of all the unique hashes.
     """
-    return {row.hash for row in session.execute(text("SELECT distinct hash FROM core.macro_events;"))}
+    query = text("SELECT distinct hash FROM core.macro_events;")
+    
+    try:
+        return {row.hash for row in session.execute(query)}
+    except Exception as e:
+        logging.error(f"Error reading hashes from the database: {e}")
+        return set()

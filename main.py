@@ -4,7 +4,7 @@ import time
 from src.economic_calendar import EconomicTable
 from src.telegram_bot import compute_massage, send_telegram_message
 from src.store.macro_events import MacroEventsStore
-from src.utils.db import get_session_factory, read_hashes
+from src.utils.db import get_session_factory, get_unique_hashes
 
 TIMEOUT_SLEEP = 30
 INITIALIZE_SLEEP = 2
@@ -16,7 +16,7 @@ class Bot(object):
     def __init__(self):
         self.session_factory = get_session_factory()
         self.session = self.session_factory()
-        self.check_list = read_hashes(self.session)
+        self.check_list = get_unique_hashes(self.session)
 
     def compute(
         self,
@@ -70,14 +70,15 @@ class Bot(object):
                 continue
 
     def core(self, e: EconomicTable, **kwargs):
-        while True:
+        should_terminate = False
+        while not should_terminate:
             try:
                 self.compute(e, **kwargs)
             except Exception:
                 logging.exception(
                     f"{time.ctime()} - Error in sending message to telegram bot: {e}"
                 )
-                time.sleep(TIMEOUT_SLEEP)
+                should_terminate = True
             logging.info(
                 f"{time.ctime()} - Sleeping for {GENERAL_SLEEP} seconds, Checklist length: {len(self.check_list)}"
             )
@@ -86,7 +87,6 @@ class Bot(object):
 
 
 if __name__ == "__main__":
-    url = "https://www.investing.com/economic-calendar/"
     e = EconomicTable()
     b = Bot()
     b.core(e, flags=["USD", "EUR", "GBP"], actual_val="")
