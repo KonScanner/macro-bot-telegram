@@ -32,23 +32,20 @@ def send_telegram_message(text):
     response = requests.get(url, params=params)
 
     # Check if the request was successful
-    if response.status_code != 200:
-        if response.status_code == 429:
-            res = response.json()
-            _retry = res["parameters"].get("retry_after")
-            if _retry:
-                time.sleep(_retry + 0.05)
-        else:
-            raise KeyboardInterrupt(
-                f"Failed to send message: {response.content}, {response.status_code}"
-            )
-    else:
+    if response.status_code == 200:
         print("Message sent successfully.")
 
+    elif response.status_code == 429:
+        res = response.json()
+        if _retry := res["parameters"].get("retry_after"):
+            time.sleep(_retry + 0.05)
+    else:
+        raise KeyboardInterrupt(
+            f"Failed to send message: {response.content}, {response.status_code}"
+        )
 
-def compare_values(
-    value1: str, value2: str
-) -> Tuple[bool, float]:
+
+def compare_values(value1: str, value2: str) -> Tuple[bool, float]:
     """
     Compare two values and return a tuple indicating if they are different and the difference between them.
 
@@ -59,6 +56,7 @@ def compare_values(
     Returns:
         Tuple[bool, float]: A tuple containing a boolean indicating if the values are different and the difference between them as a float.
     """
+
     def clean_string_to_float(value: str) -> str:
         return re.sub(r"[^\d.]+", "", value)
 
@@ -70,7 +68,7 @@ def compare_values(
         return is_surprise, 0
 
     diff = round(float(value1) - float(value2), 3)
-    is_surprise = True if diff != 0 else False
+    is_surprise = diff != 0
 
     return is_surprise, diff
 
@@ -90,24 +88,21 @@ def build_message(event, importance, timestamp, flag, previous, forecast, actual
     """
     if not actual and not previous and not forecast:
         return core
+    surprise_, diff = compare_values(actual, forecast)
+    surprise_previous, diff_previous = compare_values(actual, previous)
+    if surprise_ and surprise_previous:
+        return (
+            core
+            + secondary
+            + f"\n🎉 Surprise ----> {diff}"
+            + f"\n🎉 Surprise from previous ----> {diff_previous}"
+        )
+    elif surprise_:
+        return core + secondary + f"\n🎉 Surprise ----> {diff}"
+    elif surprise_previous:
+        return core + secondary + f"\n🎉 Surprise from previous ----> {diff_previous}"
     else:
-        surprise_, diff = compare_values(actual, forecast)
-        surprise_previous, diff_previous = compare_values(actual, previous)
-        if surprise_ and surprise_previous:
-            return (
-                core
-                + secondary
-                + f"\n🎉 Surprise ----> {diff}"
-                + f"\n🎉 Surprise from previous ----> {diff_previous}"
-            )
-        elif surprise_:
-            return core + secondary + f"\n🎉 Surprise ----> {diff}"
-        elif surprise_previous:
-            return (
-                core + secondary + f"\n🎉 Surprise from previous ----> {diff_previous}"
-            )
-        else:
-            return core + secondary
+        return core + secondary
 
 
 def compute_massage(

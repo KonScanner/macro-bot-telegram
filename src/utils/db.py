@@ -8,9 +8,8 @@ from sqlalchemy.exc import ArgumentError
 from sqlalchemy.orm import sessionmaker
 
 
-
 def get_session_factory(
-    db_uri: str="",
+    db_uri: str = "",
     pool_size: int = 5,
     max_overflow: int = 32,
     autoflush: bool = False,
@@ -53,6 +52,7 @@ def get_session_factory(
     logging.debug("Session factory created with URI: %s", db_uri)
     return sessionmaker(bind=engine, autoflush=autoflush)
 
+
 def get_unique_hashes(session) -> set:
     """
     Get all unique hashes from the database.
@@ -62,7 +62,7 @@ def get_unique_hashes(session) -> set:
     :return A set of all the unique hashes.
     """
     query = text("SELECT distinct hash FROM core.macro_events;")
-    
+
     try:
         return {row.hash for row in session.execute(query)}
     except Exception as e:

@@ -22,10 +22,7 @@ class EconomicTable:
         }
 
         response = requests.get(self.url, headers=headers)
-        if response.status_code == 200:
-            return response.content
-        else:
-            return bytes()
+        return response.content if response.status_code == 200 else bytes()
 
     def extract_time(self, element):
         """
@@ -37,8 +34,7 @@ class EconomicTable:
         Returns:
             str: The time information extracted from the element.
         """
-        time_ = element.find("td", class_="first left time js-time").string
-        return time_
+        return element.find("td", class_="first left time js-time").string
 
     def extract_value(self, id, element):
         """
@@ -69,13 +65,10 @@ class EconomicTable:
         imp = element.find("td", class_="left textNum sentiment noWrap").attrs[
             "data-img_key"
         ]
-        imp_list = []
         pattern = re.compile("bull([0-3])")
         len_star = pattern.findall(imp)
-        for _ in range(int(len_star[0])):
-            imp_list.append("*")
-        imp_star = "".join(imp_list)
-        return imp_star
+        imp_list = ["*" for _ in range(int(len_star[0]))]
+        return "".join(imp_list)
 
     def extract_flag(self, element):
         return element.find("td", class_="left flagCur noWrap").text.strip()
@@ -93,11 +86,9 @@ class EconomicTable:
         Returns:
             int: An integer value representing the importance of the economic event, where an empty string is converted to 0 and the length of the star string is returned otherwise.
         """
-        if star == "":
-            return 0
-        return len(star)
+        return 0 if not star else len(star)
 
-    def extract_table(self):
+    def extract_table(self):  # sourcery skip: avoid-builtin-shadow
         """
         Extracts the relevant information from the HTML table of economic events.
 
@@ -116,12 +107,12 @@ class EconomicTable:
         results = []
         for element in table.find_all("tr", class_="js-event-item"):
             element_dict = element.attrs
-            id = element_dict["id"].split("_")[1]
+            _id = element_dict["id"].split("_")[1]
             time_ = self.extract_time(element)
             flag = self.extract_flag(element)
             imp_star = self.extract_nubmer_star(element)
             event = self.extract_event(element)
-            actual, forecast, previous = self.extract_value(id=id, element=element)
+            actual, forecast, previous = self.extract_value(id=_id, element=element)
             results.append(
                 {
                     "Time": time_,

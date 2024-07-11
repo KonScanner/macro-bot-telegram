@@ -2,13 +2,13 @@ import logging
 import time
 
 from src.economic_calendar import EconomicTable
-from src.telegram_bot import compute_massage, send_telegram_message
 from src.store.macro_events import MacroEventsStore
+from src.telegram_bot import compute_massage, send_telegram_message
 from src.utils.db import get_session_factory, get_unique_hashes
 
 TIMEOUT_SLEEP = 30
 INITIALIZE_SLEEP = 2
-GENERAL_SLEEP = 5
+GENERAL_SLEEP = 3
 logging.basicConfig(level=logging.DEBUG)
 
 
@@ -18,13 +18,10 @@ class Bot(object):
         self.session = self.session_factory()
         self.check_list = get_unique_hashes(self.session)
 
-    def compute(
-        self,
-        e: EconomicTable,
-        flags: list[str] = ["USD", "EUR", "GBP", "JPY", "AUD", "CAD", "CHF", "CNY"],
-        actual_val: str = "",
-    ):
-        for _, i in enumerate(e.table):
+    def compute(self, e: EconomicTable, flags: list[str], actual_val: str = ""):
+        if not flags:
+            flags = ["USD", "EUR", "GBP", "JPY", "AUD", "CAD", "CHF", "CNY"]
+        for i in e.table:
             event: str = i.get("Event")
             importance: int = i.get("Importance")
             timestamp: str = i.get("Time")
@@ -42,32 +39,29 @@ class Bot(object):
                     forecast,
                     actual,
                 )
-                hash_massage = "0x" + hash_massage
-                if hash_massage not in self.check_list:
-                    if actual_val == "":
-                        if actual == "":
-                            continue
-                        payload = {
-                            "hash": hash_massage,
-                            "event": event,
-                            "importance": importance,
-                            "timestamp": timestamp,
-                            "flag": flag,
-                            "previous": previous,
-                            "forecast": forecast,
-                            "actual": actual,
-                        }
-                        send_telegram_message(text=text)
-                        MacroEventsStore().write_all(
-                            self.session,
-                            json_data_list=[payload],
-                            merge=True,
-                            commit=True,
-                        )
-                        time.sleep(INITIALIZE_SLEEP)
+                hash_massage = f"0x{hash_massage}"
+                if hash_massage not in self.check_list and not actual_val:
+                    if not actual:
+                        continue
+                    payload = {
+                        "hash": hash_massage,
+                        "event": event,
+                        "importance": importance,
+                        "timestamp": timestamp,
+                        "flag": flag,
+                        "previous": previous,
+                        "forecast": forecast,
+                        "actual": actual,
+                    }
+                    send_telegram_message(text=text)
+                    MacroEventsStore().write_all(
+                        self.session,
+                        json_data_list=[payload],
+                        merge=True,
+                        commit=True,
+                    )
+                    time.sleep(INITIALIZE_SLEEP)
                 self.check_list.add(hash_massage)
-            else:
-                continue
 
     def core(self, e: EconomicTable, **kwargs):
         should_terminate = False
